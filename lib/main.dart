@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'firebase_options.dart'; // Make sure to replace this with your actual file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
@@ -39,12 +35,67 @@ class _MyHomePageState extends State<MyHomePage> {
     _textController.clear();
   }
 
-  void _updateData(String id, String newName) async {
-    await _firestore.collection('items').doc(id).update({'name': newName});
+  void _updateData(String id, String oldName) async {
+    TextEditingController _updateTextController = TextEditingController();
+    _updateTextController.text = oldName;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Update Item'),
+          content: TextField(
+            controller: _updateTextController,
+            decoration: InputDecoration(labelText: 'New Item Name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _firestore
+                    .collection('items')
+                    .doc(id)
+                    .update({'name': _updateTextController.text});
+                Navigator.pop(context);
+              },
+              child: Text('Update'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _deleteData(String id) async {
-    await _firestore.collection('items').doc(id).delete();
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Item'),
+          content: Text('Are you sure you want to delete this item?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _firestore.collection('items').doc(id).delete();
+                Navigator.pop(context);
+              },
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -83,7 +134,6 @@ class _MyHomePageState extends State<MyHomePage> {
               return ListView(
                 shrinkWrap: true,
                 children: items.map((item) {
-                  final itemId = item.id;
                   final itemName = item['name'] ?? '';
 
                   return ListTile(
@@ -94,15 +144,13 @@ class _MyHomePageState extends State<MyHomePage> {
                         IconButton(
                           icon: Icon(Icons.edit),
                           onPressed: () {
-                            // Update operations go here
-                            // _updateData(itemId, 'New Name');
+                            _updateData(item.id, itemName);
                           },
                         ),
                         IconButton(
                           icon: Icon(Icons.delete),
                           onPressed: () {
-                            // Delete operations go here
-                            // _deleteData(itemId);
+                            _deleteData(item.id);
                           },
                         ),
                       ],
